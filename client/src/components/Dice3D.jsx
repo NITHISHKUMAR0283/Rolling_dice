@@ -1,6 +1,7 @@
 
 import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
+
 import * as CANNON from "cannon-es";
 
 // Dice face rotations for fallback
@@ -12,6 +13,41 @@ const faceRotations = [
   [0, -Math.PI / 2, 0], // 5
   [Math.PI, 0, 0], // 6
 ];
+
+// SVG dot positions for dice faces (3x3 grid)
+const svgDots = [
+  // 1
+  [4],
+  // 2
+  [0, 8],
+  // 3
+  [0, 4, 8],
+  // 4
+  [0, 2, 6, 8],
+  // 5
+  [0, 2, 4, 6, 8],
+  // 6
+  [0, 2, 3, 5, 6, 8],
+];
+
+function svgFace(face) {
+  // 3x3 grid, 60x60 viewBox
+  const positions = [
+    [12, 12], [30, 12], [48, 12],
+    [12, 30], [30, 30], [48, 30],
+    [12, 48], [30, 48], [48, 48],
+  ];
+  const dots = svgDots[face - 1]
+    .map(i => `<circle cx="${positions[i][0]}" cy="${positions[i][1]}" r="6" fill="black"/>`)
+    .join("");
+  return `<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'><rect width='60' height='60' rx='10' fill='white'/>${dots}</svg>`;
+}
+
+const diceFaceTextures = Array.from({ length: 6 }, (_, i) =>
+  new THREE.TextureLoader().load(
+    `data:image/svg+xml;base64,${btoa(svgFace(i + 1))}`
+  )
+);
 
 export default function Dice3D({ result, phase }) {
   const mountRef = useRef();
@@ -39,12 +75,10 @@ export default function Dice3D({ result, phase }) {
     dirLight.position.set(0, 100, 100);
     scene.add(dirLight);
 
-    // Dice geometry/materials
+    // Dice geometry/materials (SVG textures)
     const geometry = new THREE.BoxGeometry(60, 60, 60);
-    const materials = [1, 2, 3, 4, 5, 6].map(n =>
-      new THREE.MeshPhongMaterial({
-        map: new THREE.TextureLoader().load(`/dice/dice${n}.png`),
-      })
+    const materials = diceFaceTextures.map(
+      tex => new THREE.MeshPhongMaterial({ map: tex })
     );
     const dice = new THREE.Mesh(geometry, materials);
     dice.castShadow = true;
